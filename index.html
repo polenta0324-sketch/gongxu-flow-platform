@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工序流转平台</title>
+<style>
+  :root{
+    --bg:#f3f5f8; --panel:#ffffff; --line:#e3e8ef; --text:#1f2937; --muted:#6b7280;
+    --primary:#2563eb; --primary-dark:#1d4ed8; --danger:#dc2626; --ok:#16a34a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif; background:var(--bg); color:var(--text);}
+  header{background:var(--panel); border-bottom:1px solid var(--line); padding:14px 20px; position:sticky; top:0; z-index:20;}
+  .head-inner{max-width:1500px; margin:0 auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+  h1{font-size:20px; display:flex; align-items:center; gap:8px;}
+  h1 .dot{width:10px; height:10px; border-radius:50%; background:var(--primary);}
+  .head-right{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .op-label{color:var(--muted); font-size:13px;}
+  input[type=text], input[type=number], select{
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:14px; outline:none;
+  }
+  input:focus, select:focus{border-color:var(--primary);}
+  button{cursor:pointer; border:1px solid var(--line); background:var(--panel); border-radius:8px; padding:8px 12px; font-size:13px; transition:.15s;}
+  button:hover{background:#f1f5f9;}
+  button.primary{background:var(--primary); border-color:var(--primary); color:#fff;}
+  button.primary:hover{background:var(--primary-dark);}
+  button.ghost{background:transparent; border-color:var(--line);}
+  button.danger{color:var(--danger); border-color:#fca5a5;}
+  button.danger:hover{background:#fef2f2;}
+
+  .toolbar{max-width:1500px; margin:16px auto 0; padding:0 20px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;}
+  .field{display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);}
+  .field input{width:180px;}
+  .toolbar button.primary{padding:10px 18px;}
+
+  .stats{max-width:1500px; margin:16px auto 0; padding:0 20px; display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  .stat{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;}
+  .stat .n{font-size:24px; font-weight:700;}
+  .stat .t{font-size:12px; color:var(--muted); margin-top:2px;}
+  .stat.ok .n{color:var(--ok);} .stat.blue .n{color:var(--primary);} .stat.warn .n{color:#d97706;}
+
+  .board-wrap{max-width:1500px; margin:16px auto 40px; padding:0 20px;}
+  .board{display:flex; gap:12px; overflow-x:auto; padding-bottom:12px; align-items:flex-start;}
+  .col{min-width:250px; width:250px; background:#eef1f6; border-radius:12px; padding:10px; flex:0 0 auto;}
+  .col-head{display:flex; align-items:center; justify-content:space-between; padding:6px 4px 10px;}
+  .col-head .name{font-weight:700; font-size:15px;}
+  .col-head .badge{background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:2px 9px; font-size:12px; color:var(--muted);}
+  .col.done{background:#e7f6ec;}
+  .col-body{display:flex; flex-direction:column; gap:10px; min-height:80px;}
+  .empty{color:#9aa3af; font-size:12px; text-align:center; padding:20px 0;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .card .top{display:flex; justify-content:space-between; align-items:center;}
+  .card .order-no{font-size:12px; color:var(--muted); font-weight:600;}
+  .card .stage-tag{font-size:11px; background:#eff6ff; color:var(--primary); border-radius:10px; padding:2px 8px;}
+  .card .product{font-size:15px; font-weight:700; margin:6px 0 4px;}
+  .card .meta{font-size:12px; color:var(--muted);}
+  .card .note{font-size:12px; color:var(--muted); font-style:italic;}
+  .bar{height:5px; background:#e5e7eb; border-radius:4px; margin:8px 0 6px; overflow:hidden;}
+  .bar i{display:block; height:100%; background:var(--primary); border-radius:4px;}
+  .card .dur{font-size:12px; color:#d97706; margin-bottom:8px;}
+  .card.done .dur{color:var(--ok);}
+  .ops{display:flex; gap:6px; flex-wrap:wrap;}
+  .ops button{flex:1; padding:6px 4px; font-size:12px;}
+
+  .overlay{position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:20px;}
+  .overlay.show{display:flex;}
+  .modal{background:#fff; border-radius:14px; width:560px; max-width:100%; max-height:84vh; overflow:auto; padding:20px;}
+  .modal h3{margin-bottom:12px; font-size:17px;}
+  .hist{list-style:none;}
+  .hist li{display:flex; gap:12px; padding:10px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .hist .dot{width:10px; height:10px; border-radius:50%; background:var(--primary); margin-top:4px; flex:0 0 auto;}
+  .hist .s{flex:1;}
+  .hist .t{color:var(--muted); font-size:12px;}
+  .modal .close{margin-top:14px; width:100%;}
+  .tip{max-width:1500px; margin:0 auto; padding:0 20px; color:var(--muted); font-size:12px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <h1><span class="dot"></span>工序流转平台</h1>
+    <span style="color:var(--muted); font-size:13px;">来料检 → 放码 → 调色 → 造模 → 刷胶 → 贴膜 → 开缝 → 包装 → 检验</span>
+    <div class="head-right">
+      <span class="op-label">操作员：</span>
+      <input type="text" id="operator" placeholder="输入姓名" style="width:120px;">
+      <button class="ghost" onclick="exportData()">导出备份</button>
+      <button class="ghost" onclick="document.getElementById('importFile').click()">导入</button>
+      <button class="ghost danger" onclick="resetData()">清空全部</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="field">产品名称 *<input type="text" id="fProduct" placeholder="例：A 款手机膜"></div>
+  <div class="field">数量<input type="number" id="fQty" value="1" min="1"></div>
+  <div class="field">备注<input type="text" id="fNote" placeholder="可选"></div>
+  <button class="primary" onclick="addOrder()">＋ 新建工单</button>
+</div>
+
+<div class="stats">
+  <div class="stat blue"><div class="n" id="sTotal">0</div><div class="t">工单总数</div></div>
+  <div class="stat warn"><div class="n" id="sIn">0</div><div class="t">进行中</div></div>
+  <div class="stat ok"><div class="n" id="sDone">0</div><div class="t">已完成</div></div>
+  <div class="stat"><div class="n" id="sRate">0%</div><div class="t">完成率</div></div>
+</div>
+
+<div class="board-wrap">
+  <div class="board" id="board"></div>
+</div>
+<p class="tip">提示：数据保存在本机浏览器中（localStorage），换电脑前请点「导出备份」；在新电脑上点「导入」即可恢复。</p>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="mTitle">流转记录</h3>
+    <ul class="hist" id="mList"></ul>
+    <button class="close primary" onclick="closeModal()">关闭</button>
+  </div>
+</div>
+
+<script>
+const STAGES = ['来料检','放码','调色','造模','刷胶','贴膜','开缝','包装','检验'];
+const DONE = STAGES.length;
+
+let orders = load();
+let operator = localStorage.getItem('wf_operator') || '';
+document.getElementById('operator').value = operator;
+
+function load(){
+  try{ return JSON.parse(localStorage.getItem('wf_orders')) || []; }
+  catch(e){ return []; }
+}
+function save(){ localStorage.setItem('wf_orders', JSON.stringify(orders)); }
+
+document.getElementById('operator').addEventListener('change', function(){
+  operator = this.value.trim();
+  localStorage.setItem('wf_operator', operator);
+});
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function genOrderNo(){
+  const d = new Date();
+  const ymd = String(d.getFullYear()).slice(2) + pad(d.getMonth()+1) + pad(d.getDate());
+  return 'GD' + ymd + '-' + String(orders.length + 1).padStart(3,'0');
+}
+
+function addOrder(){
+  const product = document.getElementById('fProduct').value.trim();
+  const qty = parseInt(document.getElementById('fQty').value, 10) || 0;
+  const note = document.getElementById('fNote').value.trim();
+  if(!product){ alert('请输入产品名称'); return; }
+  if(qty <= 0){ alert('数量必须大于 0'); return; }
+  const now = Date.now();
+  const o = {
+    id: 'id' + now + Math.random().toString(36).slice(2,6),
+    orderNo: genOrderNo(),
+    product: product, qty: qty, note: note,
+    stageIndex: 0, enteredAt: now, createdAt: now,
+    history: [{ stage: STAGES[0], operator: operator || '未署名', action: '新建并进入', time: now }]
+  };
+  orders.unshift(o);
+  save(); render();
+  document.getElementById('fProduct').value = '';
+  document.getElementById('fNote').value = '';
+  document.getElementById('fQty').value = '1';
+  document.getElementById('fProduct').focus();
+}
+
+function move(id, dir){
+  const o = orders.find(x => x.id === id);
+  if(!o) return;
+  const now = Date.now();
+  if(dir === 1){
+    if(o.stageIndex >= DONE) return;
+    o.stageIndex += 1;
+    const name = o.stageIndex === DONE ? '已完成' : STAGES[o.stageIndex];
+    o.history.push({ stage: name, operator: operator || '未署名', action: '流转进入', time: now });
+  } else {
+    if(o.stageIndex <= 0) return;
+    o.stageIndex -= 1;
+    o.history.push({ stage: STAGES[o.stageIndex], operator: operator || '未署名', action: '退回', time: now });
+  }
+  o.enteredAt = now;
+  save(); render();
+}
+
+function del(id){
+  const o = orders.find(x => x.id === id);
+  if(!o) return;
+  if(!confirm('确认删除工单 ' + o.orderNo + '（' + o.product + '）？')) return;
+  orders = orders.filter(x => x.id !== id);
+  save(); render();
+}
+
+function detail(id){
+  const o = orders.find(x => x.id === id);
+  if(!o) return;
+  document.getElementById('mTitle').textContent = o.orderNo + ' · ' + o.product + ' · 流转记录';
+  document.getElementById('mList').innerHTML = o.history.slice().reverse().map(h =>
+    '<li><span class="dot"></span><span class="s"><b>' + esc(h.stage) + '</b> · ' + esc(h.action) +
+    ' · <span style="color:var(--muted)">' + esc(h.operator) + '</span></span><span class="t">' + fmtTime(h.time) + '</span></li>'
+  ).join('');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+document.getElementById('overlay').addEventListener('click', function(e){ if(e.target === this) closeModal(); });
+
+function fmtTime(ts){ const d = new Date(ts); return pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function fmtDur(ms){
+  const m = Math.floor(ms / 60000);
+  if(m < 1) return '刚刚';
+  const dd = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60), mm = m % 60;
+  let s = '';
+  if(dd) s += dd + '天';
+  if(hh) s += hh + '小时';
+  if(mm) s += mm + '分';
+  return s || '刚刚';
+}
+
+function render(){
+  const board = document.getElementById('board');
+  const total = orders.length;
+  const done = orders.filter(o => o.stageIndex === DONE).length;
+  const inprog = total - done;
+  document.getElementById('sTotal').textContent = total;
+  document.getElementById('sIn').textContent = inprog;
+  document.getElementById('sDone').textContent = done;
+  document.getElementById('sRate').textContent = total ? Math.round(done / total * 100) + '%' : '0%';
+
+  let html = '';
+  const cols = STAGES.concat(['已完成']);
+  const now = Date.now();
+  cols.forEach(function(name, idx){
+    const isDone = idx === DONE;
+    const list = isDone ? orders.filter(o => o.stageIndex === DONE)
+                        : orders.filter(o => o.stageIndex === idx);
+    const qtySum = list.reduce((s,o) => s + o.qty, 0);
+    html += '<div class="col' + (isDone ? ' done' : '') + '">';
+    html += '<div class="col-head"><span class="name">' + esc(name) + '</span><span class="badge">' + list.length + ' 单 / ' + qtySum + ' 件</span></div>';
+    html += '<div class="col-body">';
+    if(list.length === 0){
+      html += '<div class="empty">— 暂无 —</div>';
+    } else {
+      list.forEach(function(o){
+        const pct = Math.round(Math.min(o.stageIndex, DONE) / DONE * 100);
+        const dur = isDone ? ('完成：' + fmtTime(o.enteredAt)) : ('停留 ' + fmtDur(now - o.enteredAt));
+        let ops = '';
+        if(!isDone){
+          ops += '<button class="primary" onclick="move(\'' + o.id + '\',1)">下一道 ▶</button>';
+          if(o.stageIndex > 0) ops += '<button onclick="move(\'' + o.id + '\',-1)">退回</button>';
+        } else {
+          ops += '<button onclick="move(\'' + o.id + '\',-1)">退回检验</button>';
+        }
+        ops += '<button onclick="detail(\'' + o.id + '\')">详情</button>';
+        ops += '<button class="danger" onclick="del(\'' + o.id + '\')">删除</button>';
+        html += '<div class="card' + (isDone ? ' done' : '') + '">'
+          + '<div class="top"><span class="order-no">' + esc(o.orderNo) + '</span><span class="stage-tag">' + (isDone ? '完成' : '第' + (o.stageIndex+1) + '/' + DONE + '道') + '</span></div>'
+          + '<div class="product">' + esc(o.product) + '</div>'
+          + '<div class="meta">数量 ' + o.qty + ' 件</div>'
+          + (o.note ? '<div class="note">' + esc(o.note) + '</div>' : '')
+          + '<div class="bar"><i style="width:' + pct + '%"></i></div>'
+          + '<div class="dur">' + dur + '</div>'
+          + '<div class="ops">' + ops + '</div>'
+          + '</div>';
+      });
+    }
+    html += '</div></div>';
+  });
+  board.innerHTML = html;
+}
+
+function exportData(){
+  if(orders.length === 0){ alert('当前没有数据可导出'); return; }
+  const data = { exportedAt: new Date().toISOString(), operator: operator, orders: orders };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '工序流转备份_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importData(ev){
+  const f = ev.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = function(){
+    try{
+      const data = JSON.parse(r.result);
+      const list = Array.isArray(data) ? data : data.orders;
+      if(!Array.isArray(list)){ throw new Error('格式不正确'); }
+      if(!confirm('导入将覆盖当前 ' + orders.length + ' 条数据，共导入 ' + list.length + ' 条，确认？')) return;
+      orders = list;
+      save(); render();
+    }catch(err){ alert('导入失败：' + err.message); }
+  };
+  r.readAsText(f);
+  ev.target.value = '';
+}
+
+function resetData(){
+  if(orders.length === 0){ return; }
+  if(!confirm('确认清空全部 ' + orders.length + ' 条工单数据？此操作不可恢复，建议先导出备份。')) return;
+  orders = [];
+  save(); render();
+}
+
+render();
+setInterval(render, 30000);
+</script>
+</body>
+</html>
